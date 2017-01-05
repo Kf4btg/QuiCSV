@@ -6,6 +6,8 @@ from PyQt5.QtCore import QSettings, QSize
 from PyQt5.QtWidgets import QAction, QMessageBox
 from PyQt5.QtGui import QIcon, QKeySequence
 
+from model import CSVTableModel
+
 
 class MainWindow(QtWidgets.QMainWindow):
 
@@ -16,7 +18,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self._display_name = ""
         # self._modified = False
 
-        self.tableview = QtWidgets.QTableWidget(self)
+        self.tableview = QtWidgets.QTableView(self)
+        self.tableview.setModel(CSVTableModel(self.tableview))
 
         self.setCentralWidget(self.tableview)
 
@@ -77,6 +80,8 @@ class MainWindow(QtWidgets.QMainWindow):
         """Parse and display the given file in the table view"""
 
         print(f"load({filename})")
+
+        self.tableview.model().load_csv(filename)
 
         self._set_document(filename)
 
@@ -202,6 +207,8 @@ class MainWindow(QtWidgets.QMainWindow):
             event.accept()
         else:
             event.ignore()
+
+
 
 def dummy():
     print("triggered")
