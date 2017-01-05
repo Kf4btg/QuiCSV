@@ -8,6 +8,8 @@ from PyQt5.QtGui import QIcon, QKeySequence
 
 from model import CSVTableModel
 
+VENDOR="kf4btg"
+APPNAME="QuiCSV"
 
 class MainWindow(QtWidgets.QMainWindow):
 
@@ -66,7 +68,7 @@ class MainWindow(QtWidgets.QMainWindow):
         they would like to save their changes before continuing.
         """
         if self._currfile is not None and self.isWindowModified():
-          reply = QMessageBox.warning(self, "MyApplication",
+          reply = QMessageBox.warning(self, APPNAME,
               "Do you want to save your changes?",
               QMessageBox.Cancel|QMessageBox.Discard|QMessageBox.Save)
 
@@ -182,7 +184,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
 
     def read_settings(self):
-        settings = QSettings("kf4btg", "CSVedit")
+        settings = QSettings(VENDOR, APPNAME)
         pos = settings.value("pos")
         size = settings.value("size", QSize(800,500))
 
@@ -191,7 +193,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.move(pos)
 
     def write_settings(self):
-        settings = QSettings("kf4btg", "CSVedit")
+        settings = QSettings(VENDOR, APPNAME)
         settings.setValue("pos", self.pos())
         settings.setValue("size", self.size())
 
@@ -218,7 +220,7 @@ def main():
     from PyQt5.QtWidgets import QApplication
 
     app=QApplication(sys.argv)
-    app.setApplicationDisplayName("CSVedit")
+    app.setApplicationDisplayName(APPNAME)
     mw=MainWindow()
     mw.show()
     sys.exit(app.exec_())
