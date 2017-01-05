@@ -114,6 +114,20 @@ class CSVTableModel(QAbstractTableModel):
 
     # endregion
 
+    @staticmethod
+    def sniff(sample, delims):
+        """Determine the dialect of a csv file"""
+        sniffer = csv.Sniffer()
+        if delims:
+            dialect = sniffer.sniff(sample, delims)
+        else:
+            dialect = sniffer.sniff(sample)
+        has_header = sniffer.has_header(sample)
+
+        return dialect, has_header
+
+
+
     def load_csv(self, csvfile, delims=None):
         """Load a csv file into memory to back the model"""
 
@@ -134,17 +148,32 @@ class CSVTableModel(QAbstractTableModel):
                 ## determine dialect and header
 
                 # sample the first 1Kb of the file
-                sample = f.read(1024)
-                sniffer = csv.Sniffer()
-                if delims:
-                    dialect = sniffer.sniff(sample, delims)
-                else:
-                    dialect = sniffer.sniff(sample)
-                self._has_header = sniffer.has_header(sample)
+                # sample = f.read(1024)
+                #
+                # try:
+                #     dialect, self._has_header = self.sniff(sample, delims)
+                # except csv.Error as csve:
+                #     print("CSVerror")
+                #     if csve.args[0] == "Could not determine delimiter" and not delims:
+                #         print("Could not determine delimeter")
+                #         # try again with standard delims;
+                #         # "aligned" files can sometimes cause this issue
+                #         dialect, self._has_header = self.sniff(sample, ',')
+                #     else:
+                #         raise
+                # f.seek(0)
 
-                f.seek(0)
+                # sniffer = csv.Sniffer()
+                # if delims:
+                #     dialect = sniffer.sniff(sample, delims)
+                # else:
+                #     dialect = sniffer.sniff(sample)
+                # self._has_header = sniffer.has_header(sample)
+
+                # f.seek(0)
                 if self._has_header:
-                    reader = csv.DictReader(f, dialect=dialect)
+                    # reader = csv.DictReader(f, dialect=dialect)
+                    reader = csv.DictReader(f)
                     print("DictReader")
 
                     # copy the header names
@@ -156,7 +185,8 @@ class CSVTableModel(QAbstractTableModel):
 
                 else:
                     # todo: allow manually specifying the first row as a header if the sniffer fails to sniff it
-                    reader = csv.reader(f, dialect=dialect)
+                    # reader = csv.reader(f, dialect=dialect)
+                    reader = csv.reader(f)
                     print("reader")
 
                     try:

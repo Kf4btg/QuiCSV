@@ -7,6 +7,7 @@ from PyQt5.QtWidgets import QAction, QMessageBox
 from PyQt5.QtGui import QIcon, QKeySequence
 
 from model import CSVTableModel
+from dlg_format import CSVFormatDialog
 
 VENDOR="kf4btg"
 APPNAME="QuiCSV"
@@ -82,6 +83,13 @@ class MainWindow(QtWidgets.QMainWindow):
         """Parse and display the given file in the table view"""
 
         print(f"load({filename})")
+
+        fmt_dialog = CSVFormatDialog(self)
+
+        if fmt_dialog.exec_() == fmt_dialog.Accepted:
+            print("delim:", fmt_dialog.delimiter)
+            print("qchar:", fmt_dialog.quotechar)
+        # return
 
         self.tableview.model().load_csv(filename)
 
