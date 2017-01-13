@@ -3,6 +3,9 @@ from collections import OrderedDict
 
 from PyQt5.QtCore import Qt, QAbstractTableModel, QModelIndex
 
+class BadSniffException(Exception):
+    """Raised when the csv sniffer fails to determine the dialect of a file"""
+
 
 class CSVTableModel(QAbstractTableModel):
 
@@ -133,9 +136,6 @@ class CSVTableModel(QAbstractTableModel):
 
         # XXX: should we actually load the entire file into memory? What's the alternative?
 
-
-        # TODO: allow specifying all the individual components (i.e. delimiter, quotechar, lineterminator, etc.)
-
         try:
 
             with open(csvfile, newline='') as f:
@@ -148,20 +148,28 @@ class CSVTableModel(QAbstractTableModel):
                 ## determine dialect and header
 
                 # sample the first 1Kb of the file
-                # sample = f.read(1024)
-                #
-                # try:
-                #     dialect, self._has_header = self.sniff(sample, delims)
-                # except csv.Error as csve:
-                #     print("CSVerror")
-                #     if csve.args[0] == "Could not determine delimiter" and not delims:
-                #         print("Could not determine delimeter")
-                #         # try again with standard delims;
-                #         # "aligned" files can sometimes cause this issue
-                #         dialect, self._has_header = self.sniff(sample, ',')
-                #     else:
-                #         raise
-                # f.seek(0)
+                sample = f.read(1024)
+
+                try:
+                    dialect, self._has_header = self.sniff(sample, delims)
+                except csv.Error as csve:
+                    print("CSVerror:", csve)
+                    if csve.args[0] == "Could not determine delimiter":
+                        raise BadSniffException
+                        # print("Could not determine delimeter")
+                        # try again with standard delims;
+                        # "aligned" files might sometimes cause this
+                        # issue, though often it's due to using
+                        # odd "quote" characters (like balanced braces
+                        # { ... } ) to contain arbitrary text--possibly
+                        # including the delimeter, any number of times.
+                        # This latter scenario is far more difficult to
+                        # deal with.
+                        # XXX: this is stupid, sniff() already tries 'standard delims'
+                        # dialect, self._has_header = self.sniff(sample, ',;')
+                    else:
+                        raise
+                f.seek(0)
 
                 # sniffer = csv.Sniffer()
                 # if delims:
@@ -187,6 +195,63 @@ class CSVTableModel(QAbstractTableModel):
                     # todo: allow manually specifying the first row as a header if the sniffer fails to sniff it
                     # reader = csv.reader(f, dialect=dialect)
                     reader = csv.reader(f)
+                    print("reader")
+
+                    try:
+                        first_row = next(reader)
+                        # create generic header names
+                        self._headers = ["Column {}".format(i+1) for i in range(len(first_row))]
+
+                        # XXX: should we skip blank rows? If not, we could end up with a dict full of Nones
+                        self._data=[OrderedDict(zip(self._headers, first_row))]
+
+                        for row in reader:
+                            self._data.append(OrderedDict(zip(self._headers, row)))
+
+                    except StopIteration:
+                        # no data
+                        pass
+
+                self.endResetModel()
+
+
+        except IOError as e:
+            print(f"IOError: could not load {csvfile}")
+            print(e)
+
+    def load_csv_manual(self, csvfile, custom_dialect, header=False, skip=0):
+        """Load a csv file into memory to back the model"""
+
+        try:
+
+            with open(csvfile, newline='') as f:
+                self.beginResetModel()
+
+                self._currfile = csvfile
+                self._data = []
+                self._headers = []
+
+                # skip lines if requested
+                if skip > 0:
+                    for _ in range(skip):
+                        f.readline()
+
+                if header:
+                    reader = csv.DictReader(f, dialect=custom_dialect)
+                    # reader = csv.DictReader(f)
+                    print("DictReader")
+
+                    # copy the header names
+                    self._headers = list(reader.fieldnames)
+
+                    # TODO: handle "restval", ie scenarios where some rows are too long or too short
+                    for row in reader:
+                        self._data.append(row)
+
+                else:
+                    # todo: allow manually specifying the first row as a header if the sniffer fails to sniff it
+                    reader = csv.reader(f, dialect=custom_dialect)
+                    # reader = csv.reader(f)
                     print("reader")
 
                     try:

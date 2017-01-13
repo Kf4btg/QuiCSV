@@ -1,12 +1,12 @@
 from pathlib import PurePath
-# import csv
+from csv import Error as csvError
 
 from PyQt5 import QtWidgets
 from PyQt5.QtCore import QSettings, QSize
 from PyQt5.QtWidgets import QAction, QMessageBox
 from PyQt5.QtGui import QIcon, QKeySequence
 
-from model import CSVTableModel
+from model import CSVTableModel, BadSniffException
 from dlg_format import CSVFormatDialog
 
 VENDOR="kf4btg"
@@ -84,18 +84,36 @@ class MainWindow(QtWidgets.QMainWindow):
 
         print(f"load({filename})")
 
-        fmt_dialog = CSVFormatDialog(self)
+        # first, attempt to figure out the format automatically:
+        try:
+            self.tableview.model().load_csv(filename)
+            self._set_document(filename)
+        except BadSniffException:
+            # if that fails, let the user define the format manually
 
-        if fmt_dialog.exec_() == fmt_dialog.Accepted:
-            print("delim:", fmt_dialog.delimiter)
-            print("qchar:", fmt_dialog.quotechar)
-        # return
+            QtWidgets.QMessageBox().critical(self,
+                                             "Could not determine format",
+                                             "The structure of the CSV file could not be determined automatically. "
+                                             "Please use the following dialog to specify the parameters of the file.")
 
-        self.tableview.model().load_csv(filename)
+            fmt_dialog = CSVFormatDialog(self)
 
-        self._set_document(filename)
+            if fmt_dialog.exec_() == fmt_dialog.Accepted:
+                # cd = fmt_dialog.mdialect
+                # print(cd.tostring())
+                # print("header:", fmt_dialog.header)
+                # print("skiplines:", fmt_dialog.skiplines)
+
+                self.tableview.model().load_csv_manual(filename,
+                                                       fmt_dialog.mdialect,
+                                                       fmt_dialog.header,
+                                                       fmt_dialog.skiplines)
+
+                self._set_document(filename)
 
     def _set_document(self, filename, set_modified=False):
+        self.tableview.resizeColumnsToContents()
+
         self._currfile = filename
         self.modified = set_modified
 
